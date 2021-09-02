@@ -1,0 +1,131 @@
+---
+title: "Template for aggregration and plotting"
+author: "Dave Eslinger"
+date: "8/31/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load_need_Libraries}
+library(tidyverse)
+library(here)
+```
+
+## Combine data sets
+
+Now that you've extracted all the data you want by years, you need to aggregate it into a single file (at least that is one way to do it.)  This is where you will use the rbind() command you asked about previously.
+
+```{r define_target_parameters}
+
+# Read previously saved coastal fips data:
+coastal_fips <- readRDS(file = here("data","coastal_FIPS.RDS"))
+
+target_fips <- c("01003", "01097", "22071", "12086")# coastal_fips$fips[1:4]
+target_years  <- 1985:2005
+```
+
+```{r define_file_patterns}
+
+sic_base <- "sic_extracted_"
+naic_base <- "naics_extracted_"
+
+output_file <- here("data","all_data.csv")
+
+```
+
+Loop through all the years and combine the data.  For this example, I'll filter out all but the Private industry, "next to top" level agglevel numbers.  We'll build up a data record for all the years and indicate the data source.
+
+```{r loop_years_and_combine_records}
+# Before looping, create an empty dataframe that we will add more data into
+out_col_names <- c('area_fips', 'year', 'agglvl_code', 'own_title', 
+                   'industry_title', 'annual_avg_estabs_count', 
+                   'annual_avg_emplvl', 'total_annual_wages', 'avg_annual_pay', 
+                   'source')
+all_data <- data.frame(matrix(vector(), 0, 10))
+colnames(all_data) <- out_col_names
+
+for (this_year in target_years) {
+  sic_file <- here("data",paste0(sic_base, this_year, ".csv"))
+  # print(sic_file)
+  if (file.exists(sic_file)) {
+    sic <- read_csv(sic_file, col_types = "ciiccdddd") %>%  # Specifies column type to make FIPS character
+      filter(own_title == "Private" & agglvl_code == 27) %>% 
+      mutate(source = "SIC")
+    
+    all_data <- rbind(all_data, sic)
+  }
+  
+  naic_file <- here("data",paste0(naic_base, this_year, ".csv"))
+  # print(naic_file)
+  if (file.exists(naic_file)) {
+    naic <- read_csv(naic_file, col_types = "ciiccdddd") %>%  # Specifies column type to make FIPS character
+      filter(own_title == "Private" & agglvl_code == 71) %>% 
+      mutate(source = "NAIC")
+    
+    all_data <- rbind(all_data, naic)
+  }
+}
+
+```
+
+Now we can write out this data to use in the future
+
+```{r write_raw_data}
+# If there is already an output file, rename it to a backup file
+# NOTE:  This will clobber any previous backup files!!
+if(file.exists(output_file)) {
+  file.rename(output_file, paste0(output_file,".BAK"))
+}
+
+
+if(! file.exists(output_file)) {
+  headers <- paste(colnames(all_data), collapse = ", ")
+  write_lines(headers, file = output_file, append = FALSE)
+}
+write_csv(all_data, file = output_file, append = TRUE)
+
+```
+
+
+## Plotting
+
+One reason for keeping the SIC and NAIC data together is that it makes it very easy to plot the two data sets together.  Note you can just start here if you read the data file you created previously in here.  We'll use filter to pick just one FIPS.  Of course, you can do this within a loop to make graphics for each FIPS code.
+
+Here we can color by data source using the `color = source` flag:
+
+```{r color_line_graphs}
+
+filter(all_data, area_fips == "01003") %>% 
+ggplot() +
+  geom_line(aes(year, annual_avg_estabs_count, color = source))
+```
+
+or you could plot on different panels using the `facet_wrap` flag:
+
+```{r facetted_line_graphs}
+filter(all_data, area_fips == "01003") %>% 
+ggplot() +
+  geom_line(aes(year, annual_avg_estabs_count)) +
+  facet_wrap(~ source)
+
+```
+
+
+And, of course, both at the same time.  Here we color by data source and facet by FIPS
+
+```{r facetted_fips_line_graphs}
+filter(all_data, area_fips %in% target_fips) %>% 
+ggplot() +
+  geom_line(aes(year, annual_avg_estabs_count, color=source), lwd = 1.25) +
+  labs(title = "Trend in coastal work places",
+         y = "Number of Establishments",
+         x = "") +
+    facet_wrap(~ area_fips, scales = "free")
+
+
+```
+
+
