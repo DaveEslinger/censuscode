@@ -280,4 +280,111 @@ for (this_year in test_years) {
 }    
 
 ```
+```{r download_QCEW_for_NAICS}
+# Download and data process (loop through all variables)
 
+# Declare sequence outside of loop
+# Data starts same year but runs through presetn
+
+years=1990:2020
+
+vars_naic <- c("annual_avg_estabs_count","annual_avg_emplvl","total_annual_wages","avg_annual_pay")
+
+# Define extra variables needed
+extra_naic_vars <- c("area_fips", "year","agglvl_code", "own_title",
+                    "industry_title")
+
+outfile_base <- here("data","naics_extracted")
+
+# Calculate the maximum iterations
+
+max_iterations <-length (years)* length (fips)* length (vars_naic)
+
+# Initialize a variable to count total iterations
+
+total_iterations <- 0
+
+# Start the loop
+
+test_years <- c(1991,1992,1993,1994,1995) # years 1990:2020
+test_fips <- fips #[1:452]
+
+for (this_year in test_years) {
+  tic("Year loop")
+  print(paste("'Outer' loop with year =", this_year))
+  
+  outfile <- paste0(outfile_base, "_", this_year,".csv")
+  # write out a header row
+  write_lines(paste(c(extra_naic_vars, vars_naic), collapse = ","), outfile, append = FALSE)
+  
+  naic_filename <- paste0(naic_prefix, this_year, naic_body)
+  naic_URL <-
+    paste0(base_URL,
+           this_year,
+           naic_subdirs,
+           naic_filename,
+           naic_extension)
+  naic_local <- here("data", paste0(naic_filename, naic_extension))
+  print(naic_URL)
+  if (! file.exists(naic_local)) {
+    tic("Download")
+    download.file(naic_URL, naic_local)
+    toc() # Download
+  }
+  file_list <- unzip(naic_local, list = TRUE)
+  
+  for (this_fips in test_fips){
+    tic("Fips loop")
+    print(paste("'Middle' loop with FIPS =",this_fips))
+    download_list <- file_list %>%
+      filter(grepl(this_fips, Name))
+    
+    if(length(download_list$Name) == 0) {
+      print(paste0("No data for FIPS = ", this_fips))
+      toc() #FIPS w/out data
+    } else {
+      
+      sfile <- unzip(
+        naic_local,
+        files = (download_list$Name),
+        junkpaths = TRUE,
+        overwrite = TRUE,
+        exdir = here("data", "tmp")
+      ) 
+      fips_df_naic <- read_csv(sfile)
+      # glimpse(fips_df)
+      
+      # This next bit subsets out the data needed and keeps both the overall 
+      # county sum and the sums by each major industry level (Federal, State, 
+      # and Private.  The last three SHOULD sum up to the countywide total
+      # that doesn't seem to be the case all the time.
+      # Note that using subset() keeps you from having to do a third nested loop.
+     
+
+      fips_vars <- subset(fips_df_naic, select = c(extra_naic_vars, vars_naic)) %>% 
+        filter(agglvl_code == 26 | agglvl_code == 27)  # %>% 
+      # These are the codes used on summary records produced by the Quarterly Census of Employment and Wages (QCEW) program to indicate the aggregation level of the data summarized on the record. These aggregation level codes are for QCEW records coded to the North American Industry Classification System (NAICS)
+      # group_by(agglvl_code) %>% 
+      # mutate(across(c(annual_avg_estabs_count:avg_annual_pay), sum))
+      # 
+      # 
+      # The last 2 lines above would have summed the 3 sectors into a total
+      # to compare with the countywide total.  I suggest doing that  
+      # in another program once this one has extracted everything.  
+      
+      # Append the info for this FIPS onto the output file.
+      write_csv(fips_vars, outfile, append = TRUE)
+      
+      # Remove the unzipped file for this FIPS
+      unlink(sfile, force = TRUE) 
+      toc() # FIPS loops
+    
+    }
+  }
+  
+  # Done with year, remove zip file for this year
+  unlink(naic_local, force = TRUE) 
+  toc() # Year loop
+}    
+
+```

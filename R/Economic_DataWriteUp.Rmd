@@ -1,0 +1,38 @@
+---
+title: "Econmic Data Write Up"
+author: "IsabelLopez"
+date: "8/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Economic Data Write-Up
+
+Coastal Economy
+The coastal economy refers to economic activity in the near shore areas also known as “Coastal Shoreline Counties”. The four parameters that are measures of the coastal economy are: (1) GDP (Gross Domestic Product), (2) Employment Numbers, (3) Annual Wages and (4) Business Establishments. The counties considered all border open ocean or contain FEMA identified coastal high hazard areas in the Special Flood Hazard Area. The coastal economy identifies what would be affected from any changing environmental conditions in our oceans and along the coast such as hurricanes. 
+The economic data in tandem with hurricane strike data will be used to observe how business and the economy are affected such as wages lost, employment levels and GDP loss. The Quarterly Census of Employment and Wages (QCEW) provided by the U.S Bureau of Labor Statistics publishes quarterly count of employment and wages available at the county, state, and national level by industry. There are two codes to consider the NAICS and SIC Codes, which classify businesses, the data provided of the SIC codes has a different year range than that of NAICs codes.
+
+

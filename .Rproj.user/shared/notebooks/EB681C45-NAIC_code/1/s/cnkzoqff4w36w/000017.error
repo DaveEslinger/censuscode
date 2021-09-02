@@ -1,1 +1,0 @@
-{"frames":[{"func":"download.file(naic_URL, naic_local)","file":"","line_number":0,"end_line_number":0,"character_number":0,"end_character_number":0}],"message":"Error in download.file(naic_URL, naic_local) : \n  download from 'https://data.bls.gov/cew/data/files/1995/csv/1995_annual_by_area.zip' failed\n"}

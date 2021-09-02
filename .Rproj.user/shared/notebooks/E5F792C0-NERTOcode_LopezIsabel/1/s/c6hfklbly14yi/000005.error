@@ -1,1 +1,0 @@
-{"frames":[{"func":"unzip(naic_local, list = TRUE)","file":"","line_number":0,"end_line_number":0,"character_number":0,"end_character_number":0}],"message":"Error in unzip(naic_local, list = TRUE) : \n  zip file '/Users/isabellopez/Documents/GitHub/censuscode/data/1991_annual_by_area.zip' cannot be opened\n"}
