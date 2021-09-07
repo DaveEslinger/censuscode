@@ -1,0 +1,119 @@
+---
+title: "SIC to NAIC pdf scraping"
+author: "Dave Eslinger"
+date: "9/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::optsic_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(pdftools)
+library(tidyverse)
+library(here)
+```
+
+## Intro
+
+Create lookup table by scraping data table from SIC to NAICS pdf and from the NAICS to SIC pdf.  Both documents can be downloaded from pages below this top-level site:
+
+
+https://www.bls.gov/ppi/additional-resources/concordance-between-the-2002-north-american-industry-classification-and-the-1987-standard-industrial-classification-systems-in-the-ppi.htm
+
+```{r define_sic_filenames}
+pdf_file <- here("data",
+                 "sic-publication-structure-and-comparable-naics-indexes-in-the-producer-price-index.pdf")
+
+output_file <- here("data","sic_to_naics.csv")
+```
+
+
+```{r read_and_convert_sic_pdf}
+pdf_pages <- pdf_data(pdf_file)
+
+new_table <- data.frame(matrix(vector(), 0, 4))
+
+for(page_num in 2:length(pdf_pages)) {  # Skip the first title page
+  this_table <- pdf_pages[[page_num]] %>%
+    arrange(y, x) %>% 
+    mutate(field = case_when(
+      x < 87 ~ "sic_industry",
+      x >= 87 & x < 135 ~ "sic_product",
+      x >= 135 & x < 508 ~ "sic_title",
+      x >= 508 ~ "naics_product"),
+      y_diff = c(0,diff(y, 1)),
+      y = ifelse(y_diff == 1, y - 1, y)
+    ) %>% 
+    select(-y_diff) %>% 
+    group_by(y, field) %>% 
+    summarize(value = str_c(text, collapse = " ")) %>% 
+    pivot_wider(names_from = "field", values_from = "value") %>% 
+    filter(y != 36 & y != 764) %>%   # Drop the header and page number lines
+    ungroup() %>% 
+    select(-y) %>%                   # and get rid of the y coordinate
+    relocate(naics_product, .after = sic_title) %>% 
+    fill(sic_industry)
+  
+  new_table <- rbind(new_table, this_table)
+} 
+
+```
+
+Write out the new file
+
+```{r write_sic_output}
+
+write_csv(new_table, file = output_file)
+
+```
+
+## NAIC to SIC
+
+```{r define_naics_files}
+
+pdf_file <- here("data","naics-publication-structure-and-comparable-sic-indexes-in-the-producer-price-index.pdf")
+file.exists(pdf_file)
+
+output_file <- here("data","naics_to_sic.csv")
+
+```
+
+
+```{r read_and_convert_naic_pdf}
+pdf_pages <- pdf_data(pdf_file)
+
+new_table <- data.frame(matrix(vector(), 0, 4))
+
+for(page_num in 2:length(pdf_pages)) {  # Skip the first title page
+  this_table <- pdf_pages[[page_num]] %>%
+    arrange(y, x) %>% 
+    mutate(field = case_when(
+      x < 98 ~ "naics_industry",
+      x >= 98 & x < 159 ~ "naics_product",
+      x >= 159 & x < 514 ~ "naics_title",
+      x >= 514 ~ "sic_product"),
+      y_diff = c(0,diff(y, 1)),
+      y = ifelse(y_diff == 1, y - 1, y)
+    ) %>% 
+    select(-y_diff) %>% 
+    group_by(y, field) %>% 
+    summarize(value = str_c(text, collapse = " ")) %>% 
+    pivot_wider(names_from = "field", values_from = "value") %>% 
+    filter(y != 36 & y != 764) %>%   # Drop the header and page number lines
+    ungroup() %>% 
+    select(-y) %>%                   # and get rid of the y coordinate
+    fill(naics_industry)
+
+    new_table <- rbind(new_table, this_table)
+} 
+
+```
+
+```{r write_naics_output}
+
+write_csv(new_table, file = output_file)
+
+```
+
